@@ -22,6 +22,67 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
         
+        /* Oculta o body inicialmente se for link do cliente para evitar piscar o dashboard */
+        body.is-loading-client { 
+            visibility: hidden;
+            overflow: hidden;
+        }
+
+        /* Estilo do Loader de Inicialização */
+        #initial-client-loader {
+            position: fixed;
+            inset: 0;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loader-logo {
+            width: 80px;
+            height: 80px;
+            background: #2563eb;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+            animation: pulse-blue 2s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+
+        .loader-progress-bg {
+            width: 200px;
+            height: 4px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .loader-progress-bar {
+            width: 30%;
+            height: 100%;
+            background: #2563eb;
+            border-radius: 10px;
+            animation: progress-move 2s infinite ease-in-out;
+        }
+
+        @keyframes progress-move {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
+
         :root {
             --primary-color: #2563eb;
             --sidebar-width: 320px;
@@ -215,6 +276,27 @@
     </style>
 </head>
 <body class="h-screen flex overflow-hidden text-sm">
+    <!-- Script de Bloqueio Imediato para Modo Cliente -->
+    <script>
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            if(params.get('view') === 'client') {
+                document.body.classList.add('is-loading-client');
+                const loaderHtml = `
+                    <div id="initial-client-loader">
+                        <div class="loader-logo">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <p class="text-slate-600 font-bold mb-4 tracking-tight">Preparando Apresentação...</p>
+                        <div class="loader-progress-bg">
+                            <div class="loader-progress-bar"></div>
+                        </div>
+                    </div>
+                `;
+                document.write(loaderHtml);
+            }
+        })();
+    </script>
 
     <header class="md:hidden fixed top-0 w-full bg-white border-b border-slate-200 z-50 flex items-center justify-between p-4 shadow-sm" id="mobileHeader">
         <div class="flex items-center gap-2">
@@ -1552,13 +1634,33 @@
                         let loadedData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
                         applyLoadedData(loadedData);
                         document.getElementById('inputClientName').value = cName;
+                        
+                        // Garante que o relatório seja a aba ativa
                         switchTab('report', null);
+                        
+                        // Finaliza o carregamento suave
+                        setTimeout(() => {
+                            const loader = document.getElementById('initial-client-loader');
+                            if(loader) {
+                                loader.style.opacity = '0';
+                                setTimeout(() => {
+                                    loader.remove();
+                                    document.body.classList.remove('is-loading-client');
+                                }, 500);
+                            }
+                        }, 600);
                     } else {
+                        document.body.classList.remove('is-loading-client');
+                        const loader = document.getElementById('initial-client-loader');
+                        if(loader) loader.remove();
                         alert("Erro ao carregar dados do cliente via Link.");
                     }
                 })
                 .catch(err => {
                     setCloudLoader(false);
+                    document.body.classList.remove('is-loading-client');
+                    const loader = document.getElementById('initial-client-loader');
+                    if(loader) loader.remove();
                     alert("Erro na conexão com a nuvem.");
                     console.error(err);
                 });
